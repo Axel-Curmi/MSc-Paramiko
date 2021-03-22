@@ -1,5 +1,5 @@
 ========
-Paramiko
+Paramiko (with PySEcube)
 ========
 
 .. Continuous integration and code coverage badges
@@ -17,6 +17,10 @@ Paramiko
 :API docs:    http://docs.paramiko.org
 :Development: https://github.com/paramiko/paramiko
 
+
+PySEcube TODO
+----
+[ ] kex_group1.py
 
 What
 ----
