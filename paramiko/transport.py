@@ -1910,13 +1910,13 @@ class Transport(threading.Thread, ClosingContextManager):
         if not hasattr(self, "_logged_hash_selection"):
             self._log(DEBUG, hash_select_msg)
             setattr(self, "_logged_hash_selection", True)
-        out = sofar = hash_algo(m.asbytes()).digest()
+        out = sofar = hash_algo(m.asbytes()).digest() # TODO: PySEcube call
         while len(out) < nbytes:
             m = Message()
             m.add_mpint(self.K)
             m.add_bytes(self.H)
             m.add_bytes(sofar)
-            digest = hash_algo(m.asbytes()).digest()
+            digest = hash_algo(m.asbytes()).digest() # TODO: PySEcube call
             out += digest
             sofar += digest
         return out[:nbytes]
@@ -2549,9 +2549,14 @@ class Transport(threading.Thread, ClosingContextManager):
             key_out = self._compute_key(
                 "C", self._cipher_info[self.local_cipher]["key-size"]
             )
+
+        # TODO: PySEcube add key to keystore, instead of using this engine (?)
         engine = self._get_cipher(
             self.local_cipher, key_out, IV_out, self._ENCRYPT
         )
+
+        
+
         etm = "etm@openssh.com" in self.local_mac
         mac_size = self._mac_info[self.local_mac]["size"]
         mac_engine = self._mac_info[self.local_mac]["class"]
