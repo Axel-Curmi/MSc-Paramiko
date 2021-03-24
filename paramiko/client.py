@@ -237,6 +237,7 @@ class SSHClient(ClosingContextManager):
         gss_trust_dns=True,
         passphrase=None,
         disabled_algorithms=None,
+        pysecube_pin=None
     ):
         """
         Connect to an SSH server and authenticate to it.  The server's host key
@@ -372,6 +373,7 @@ class SSHClient(ClosingContextManager):
             gss_kex=gss_kex,
             gss_deleg_creds=gss_deleg_creds,
             disabled_algorithms=disabled_algorithms,
+            pysecube_pin=pysecube_pin
         )
         t.use_compression(compress=compress)
         t.set_gss_host(

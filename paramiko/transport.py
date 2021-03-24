@@ -111,6 +111,7 @@ from paramiko.ssh_exception import (
 )
 from paramiko.util import retry_on_signal, ClosingContextManager, clamp_value
 
+from pysecube import Wrapper, PySEcubeException # [PySEcube]
 
 # for thread cleanup
 _active_threads = []
@@ -310,6 +311,7 @@ class Transport(threading.Thread, ClosingContextManager):
         gss_kex=False,
         gss_deleg_creds=True,
         disabled_algorithms=None,
+        pysecube_pin=None
     ):
         """
         Create a new SSH session over an existing socket, or socket-like
@@ -383,6 +385,15 @@ class Transport(threading.Thread, ClosingContextManager):
         """
         self.active = False
         self.hostname = None
+
+        # [PySEcube] Initialise wrapper and set preferred KEX as DH Group14
+        self.secube_wrapper = None
+
+        self._preferred_kex = ("diffie-hellman-group14-sha256",)
+        if pysecube_pin is not None:
+            self.secube_wrapper = Wrapper(pysecube_pin)
+            self.secube_wrapper.crypto_set_time_now()
+        ###
 
         if isinstance(sock, string_types):
             # convert "host:port" into (host, port)

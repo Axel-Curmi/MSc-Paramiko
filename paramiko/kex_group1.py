@@ -117,8 +117,15 @@ class KexGroup1(object):
         hm.add_mpint(self.f)
         hm.add_mpint(K)
 
-        # TODO: PySEcube call SHA256 for kex_group14
-        self.transport._set_K_H(K, self.hash_algo(hm.asbytes()).digest())
+        # [PySEcube] Generate digest from SHA256 implementation found on
+        #            SEcube device if the wrapper is initialised
+        digest = None
+        if self.transport.secube_wrapper is None:
+            digest = self.hash_algo(hm.asbytes()).digest()
+        else:
+            _, digest = self.transport.secube_wrapper.digest(hm.asbytes())
+        self.transport._set_K_H(K, digest)
+        ###
 
         self.transport._verify_key(host_key, sig)
         self.transport._activate_outbound()
