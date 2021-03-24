@@ -20,9 +20,9 @@ Paramiko (with PySEcube)
 
 PySEcube TODO
 ----
-[ ] kex_group1.py
-[ ] transport.py -> _compute_key()
-[ ] transport.py -> _activate_outbound()
+* kex_group1.py
+* transport.py -> _compute_key()
+* transport.py -> _activate_outbound()
 
 What
 ----
