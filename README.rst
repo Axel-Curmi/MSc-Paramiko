@@ -11,7 +11,7 @@ Paramiko (with PySEcube)
 :Development: https://github.com/paramiko/paramiko
 
 
-PySEcube TODO
+Files/Functions to be modified with PySEcube calls (WIP)
 ----
 * kex_group1.py
 * transport.py -> _compute_key()
