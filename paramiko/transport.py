@@ -319,7 +319,7 @@ class Transport(threading.Thread, ClosingContextManager):
         gss_kex=False,
         gss_deleg_creds=True,
         disabled_algorithms=None,
-        pysecube_pin=None
+        pysecube=None
     ):
         """
         Create a new SSH session over an existing socket, or socket-like
@@ -394,14 +394,8 @@ class Transport(threading.Thread, ClosingContextManager):
         self.active = False
         self.hostname = None
 
-        # [PySEcube] Initialise wrapper and set preferred KEX as DH Group14
-        self.secube_wrapper = None
-
-        self._preferred_kex = ("diffie-hellman-group14-sha256",)
-        if pysecube_pin is not None:
-            self.secube_wrapper = Wrapper(pysecube_pin)
-            self.secube_wrapper.crypto_set_time_now()
-        ###
+        # [PySEcube] 
+        self.pysecube = pysecube
 
         if isinstance(sock, string_types):
             # convert "host:port" into (host, port)
@@ -515,22 +509,6 @@ class Transport(threading.Thread, ClosingContextManager):
         self.server_accepts = []
         self.server_accept_cv = threading.Condition(self.lock)
         self.subsystem_table = {}
-
-    # [PySEcube] Remove added keys and logout the SEcube device
-    def pysecube_destroy(self):
-        if self.secube_wrapper is None:
-            return
-
-        # Delete out key
-        if self.secube_wrapper.key_exists(PYSECUBE_OUT_KEY_ID):
-            self.secube_wrapper.delete_key(PYSECUBE_OUT_KEY_ID)
-
-        # Delete in key
-        if self.secube_wrapper.key_exists(PYSECUBE_IN_KEY_ID):
-            self.secube_wrapper.delete_key(PYSECUBE_IN_KEY_ID)
-
-        # Force destroy secube wrapper
-        self.secube_wrapper.logout()
 
     def _filter_algorithm(self, type_):
         default = getattr(self, "_preferred_{}".format(type_))
@@ -1975,7 +1953,7 @@ class Transport(threading.Thread, ClosingContextManager):
     def _get_secube_cipher(self, name, iv, operation):
         if name not in self._cipher_info:
             raise SSHException("Unknown client cipher " + name)
-        elif self.secube_wrapper is None:
+        elif self.pysecube is None:
             raise SSHException("SEcube wrapper can not be None")
         elif self._cipher_info[name]["class"] != algorithms.AES:
             raise SSHException("SEcube unsupported cipher")
@@ -1989,7 +1967,7 @@ class Transport(threading.Thread, ClosingContextManager):
         key_id = PYSECUBE_OUT_KEY_ID if operation is self._ENCRYPT else \
             PYSECUBE_IN_KEY_ID
         
-        return self.secube_wrapper.get_crypter(algorithm, flags, key_id, iv=iv)
+        return self.pysecube.get_crypter(algorithm, flags, key_id, iv=iv)
 
     def _set_forward_agent_handler(self, handler):
         if handler is None:
@@ -2568,11 +2546,11 @@ class Transport(threading.Thread, ClosingContextManager):
             )
 
         # [PySEcube] Add key to SEcube - valid for 1 hour as per spec in RFC
-        if self.secube_wrapper is not None:
+        if self.pysecube is not None:
             # Add key to SEcube device
-            if self.secube_wrapper.key_exists(PYSECUBE_IN_KEY_ID):
-                self.secube_wrapper.delete_key(PYSECUBE_IN_KEY_ID)
-            self.secube_wrapper.add_key(PYSECUBE_IN_KEY_ID, b"PARAMIKO_OUT",
+            if self.pysecube.key_exists(PYSECUBE_IN_KEY_ID):
+                self.pysecube.delete_key(PYSECUBE_IN_KEY_ID)
+            self.pysecube.add_key(PYSECUBE_IN_KEY_ID, b"PARAMIKO_OUT",
                                         key_in, 3600)
             # Create crypter object
             engine = self._get_secube_cipher(
@@ -2623,11 +2601,11 @@ class Transport(threading.Thread, ClosingContextManager):
             )
 
         # [PySEcube] Add key to SEcube - valid for 1 hour as per RFC
-        if self.secube_wrapper is not None:
+        if self.pysecube is not None:
             # Add key to SEcube device
-            if self.secube_wrapper.key_exists(PYSECUBE_OUT_KEY_ID):
-                self.secube_wrapper.delete_key(PYSECUBE_OUT_KEY_ID)
-            self.secube_wrapper.add_key(PYSECUBE_OUT_KEY_ID, b"PARAMIKO_OUT",
+            if self.pysecube.key_exists(PYSECUBE_OUT_KEY_ID):
+                self.pysecube.delete_key(PYSECUBE_OUT_KEY_ID)
+            self.pysecube.add_key(PYSECUBE_OUT_KEY_ID, b"PARAMIKO_OUT",
                                         key_out, 3600)
             # Create crypter object
             engine = self._get_secube_cipher(

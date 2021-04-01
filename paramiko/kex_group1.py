@@ -120,10 +120,10 @@ class KexGroup1(object):
         # [PySEcube] Generate digest from SHA256 implementation found on
         #            SEcube device if the wrapper is initialised
         digest = None
-        if self.transport.secube_wrapper is None:
+        if self.transport.pysecube is None:
             digest = self.hash_algo(hm.asbytes()).digest()
         else:
-            digest = self.transport.secube_wrapper.digest_sha256(hm.asbytes())
+            digest = self.transport.pysecube.digest_sha256(hm.asbytes())
         self.transport._set_K_H(K, digest)
         ###
 
