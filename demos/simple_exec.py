@@ -1,6 +1,11 @@
 from paramiko import (SSHClient)
 from paramiko.config import SSH_PORT
 
+import logging
+
+# logging.basicConfig()
+# logging.getLogger("paramiko").setLevel(logging.DEBUG)
+
 PYSECUBE_PIN = b"test"
 
 def main() -> int:
@@ -18,6 +23,7 @@ def main() -> int:
         client.load_system_host_keys()
         client.connect(args.host, SSH_PORT, args.username, args.password,
                        pysecube_pin = PYSECUBE_PIN)
+        # client.connect(args.host, SSH_PORT, args.username, args.password)
         print(f"Connected with {args.host}")
 
         _, stdout, _ = client.exec_command(args.command)

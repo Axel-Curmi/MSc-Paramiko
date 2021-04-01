@@ -244,3 +244,7 @@ MIN_PACKET_SIZE = 2 ** 12
 
 # Max windows size according to http://www.ietf.org/rfc/rfc4254.txt
 MAX_WINDOW_SIZE = 2 ** 32 - 1
+
+# [PySEcube] ID of key. We might need to use bit 0x1000 
+PYSECUBE_OUT_KEY_ID = 0x0500
+PYSECUBE_IN_KEY_ID  = 0x0510

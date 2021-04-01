@@ -123,7 +123,7 @@ class KexGroup1(object):
         if self.transport.secube_wrapper is None:
             digest = self.hash_algo(hm.asbytes()).digest()
         else:
-            _, digest = self.transport.secube_wrapper.digest(hm.asbytes())
+            digest = self.transport.secube_wrapper.digest_sha256(hm.asbytes())
         self.transport._set_K_H(K, digest)
         ###
 

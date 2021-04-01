@@ -84,6 +84,8 @@ from paramiko.common import (
     HIGHEST_USERAUTH_MESSAGE_ID,
     MSG_UNIMPLEMENTED,
     MSG_NAMES,
+    PYSECUBE_OUT_KEY_ID,
+    PYSECUBE_IN_KEY_ID,
 )
 from paramiko.compress import ZlibCompressor, ZlibDecompressor
 from paramiko.dsskey import DSSKey
@@ -111,7 +113,13 @@ from paramiko.ssh_exception import (
 )
 from paramiko.util import retry_on_signal, ClosingContextManager, clamp_value
 
-from pysecube import Wrapper, PySEcubeException # [PySEcube]
+from pysecube import (Wrapper,
+                      Crypter,
+                      ALGORITHM_AES,
+                      FEEDBACK_CBC,
+                      FEEDBACK_CTR,
+                      MODE_ENCRYPT,
+                      MODE_DECRYPT) # [PySEcube]
 
 # for thread cleanup
 _active_threads = []
@@ -507,6 +515,22 @@ class Transport(threading.Thread, ClosingContextManager):
         self.server_accepts = []
         self.server_accept_cv = threading.Condition(self.lock)
         self.subsystem_table = {}
+
+    # [PySEcube] Remove added keys and logout the SEcube device
+    def pysecube_destroy(self):
+        if self.secube_wrapper is None:
+            return
+
+        # Delete out key
+        if self.secube_wrapper.key_exists(PYSECUBE_OUT_KEY_ID):
+            self.secube_wrapper.delete_key(PYSECUBE_OUT_KEY_ID)
+
+        # Delete in key
+        if self.secube_wrapper.key_exists(PYSECUBE_IN_KEY_ID):
+            self.secube_wrapper.delete_key(PYSECUBE_IN_KEY_ID)
+
+        # Force destroy secube wrapper
+        self.secube_wrapper.logout()
 
     def _filter_algorithm(self, type_):
         default = getattr(self, "_preferred_{}".format(type_))
@@ -1946,6 +1970,27 @@ class Transport(threading.Thread, ClosingContextManager):
             else:
                 return cipher.decryptor()
 
+    # [PySEcube] This function has been modified to return a PySEcube Crypter
+    # if the wrapper is initialised
+    def _get_secube_cipher(self, name, iv, operation):
+        if name not in self._cipher_info:
+            raise SSHException("Unknown client cipher " + name)
+        elif self.secube_wrapper is None:
+            raise SSHException("SEcube wrapper can not be None")
+        elif self._cipher_info[name]["class"] != algorithms.AES:
+            raise SSHException("SEcube unsupported cipher")
+
+        # PySEcube crypter
+        algorithm = ALGORITHM_AES
+        flags = FEEDBACK_CTR if \
+            self._cipher_info[name]["mode"] == modes.CTR else FEEDBACK_CBC
+        flags |= MODE_ENCRYPT if operation is self._ENCRYPT \
+            else MODE_DECRYPT
+        key_id = PYSECUBE_OUT_KEY_ID if operation is self._ENCRYPT else \
+            PYSECUBE_IN_KEY_ID
+        
+        return self.secube_wrapper.get_crypter(algorithm, flags, key_id, iv=iv)
+
     def _set_forward_agent_handler(self, handler):
         if handler is None:
 
@@ -2521,9 +2566,25 @@ class Transport(threading.Thread, ClosingContextManager):
             key_in = self._compute_key(
                 "D", self._cipher_info[self.remote_cipher]["key-size"]
             )
-        engine = self._get_cipher(
-            self.remote_cipher, key_in, IV_in, self._DECRYPT
-        )
+
+        # [PySEcube] Add key to SEcube - valid for 1 hour as per spec in RFC
+        if self.secube_wrapper is not None:
+            # Add key to SEcube device
+            if self.secube_wrapper.key_exists(PYSECUBE_IN_KEY_ID):
+                self.secube_wrapper.delete_key(PYSECUBE_IN_KEY_ID)
+            self.secube_wrapper.add_key(PYSECUBE_IN_KEY_ID, b"PARAMIKO_OUT",
+                                        key_in, 3600)
+            # Create crypter object
+            engine = self._get_secube_cipher(
+                self.remote_cipher, IV_in, self._DECRYPT
+            )
+        else:
+            engine = self._get_cipher(
+                self.remote_cipher, key_in, IV_in, self._DECRYPT
+            )
+        # [PySEcube] Add DEBUG log to know which cipher engine is being used.
+        self._log(DEBUG, "Inbound cipher engine %s", engine)
+
         etm = "etm@openssh.com" in self.remote_mac
         mac_size = self._mac_info[self.remote_mac]["size"]
         mac_engine = self._mac_info[self.remote_mac]["class"]
@@ -2561,12 +2622,24 @@ class Transport(threading.Thread, ClosingContextManager):
                 "C", self._cipher_info[self.local_cipher]["key-size"]
             )
 
-        # TODO: PySEcube add key to keystore, instead of using this engine (?)
-        engine = self._get_cipher(
-            self.local_cipher, key_out, IV_out, self._ENCRYPT
-        )
-
-        
+        # [PySEcube] Add key to SEcube - valid for 1 hour as per RFC
+        if self.secube_wrapper is not None:
+            # Add key to SEcube device
+            if self.secube_wrapper.key_exists(PYSECUBE_OUT_KEY_ID):
+                self.secube_wrapper.delete_key(PYSECUBE_OUT_KEY_ID)
+            self.secube_wrapper.add_key(PYSECUBE_OUT_KEY_ID, b"PARAMIKO_OUT",
+                                        key_out, 3600)
+            # Create crypter object
+            engine = self._get_secube_cipher(
+                self.local_cipher, IV_out, self._ENCRYPT
+            )
+        else:
+            # If PySEcube is not used, normal cryptography engine is used
+            engine = self._get_cipher(
+                self.local_cipher, key_out, IV_out, self._ENCRYPT
+            )
+        # [PySEcube] Add DEBUG log to know which cipher engine is being used.
+        self._log(DEBUG, "Outbound cipher engine %s", engine)
 
         etm = "etm@openssh.com" in self.local_mac
         mac_size = self._mac_info[self.local_mac]["size"]
@@ -2579,7 +2652,8 @@ class Transport(threading.Thread, ClosingContextManager):
             mac_key = self._compute_key("E", mac_engine().digest_size)
         sdctr = self.local_cipher.endswith("-ctr")
         self.packetizer.set_outbound_cipher(
-            engine, block_size, mac_engine, mac_size, mac_key, sdctr, etm=etm
+            engine, block_size, mac_engine, mac_size, mac_key,
+            sdctr, etm=etm
         )
         compress_out = self._compression_info[self.local_compression][0]
         if compress_out is not None and (
