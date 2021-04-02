@@ -26,7 +26,22 @@ def main() -> int:
         client.load_system_host_keys()
         client.pysecube_login(PYSECUBE_PIN)
 
-        client.connect(args.host, SSH_PORT, args.username, args.password)
+        client.connect(args.host, SSH_PORT, args.username, args.password,
+                       disabled_algorithms={
+                           # Force KEX engine to use DH Group 14 with SHA256
+                           "kex": [
+                                "curve25519-sha256@libssh.org",
+                                "ecdh-sha2-nistp256",
+                                "ecdh-sha2-nistp384",
+                                "ecdh-sha2-nistp521",
+                                "diffie-hellman-group16-sha512",
+                                "diffie-hellman-group-exchange-sha256",
+                                "diffie-hellman-group-exchange-sha1",
+                                "diffie-hellman-group14-sha1",
+                                "diffie-hellman-group1-sha1",
+                           ]
+                       }
+        )
         # client.connect(args.host, SSH_PORT, args.username, args.password)
         print(f"Connected with {args.host}")
 

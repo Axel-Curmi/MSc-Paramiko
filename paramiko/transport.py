@@ -84,8 +84,10 @@ from paramiko.common import (
     HIGHEST_USERAUTH_MESSAGE_ID,
     MSG_UNIMPLEMENTED,
     MSG_NAMES,
-    PYSECUBE_OUT_KEY_ID,
-    PYSECUBE_IN_KEY_ID,
+    PYSECUBE_CIPHER_OUT_KEY_ID,
+    PYSECUBE_CIPHER_IN_KEY_ID,
+    PYSECUBE_HMAC_OUT_KEY_ID,
+    PYSECUBE_HMAC_IN_KEY_ID
 )
 from paramiko.compress import ZlibCompressor, ZlibDecompressor
 from paramiko.dsskey import DSSKey
@@ -1923,13 +1925,34 @@ class Transport(threading.Thread, ClosingContextManager):
         if not hasattr(self, "_logged_hash_selection"):
             self._log(DEBUG, hash_select_msg)
             setattr(self, "_logged_hash_selection", True)
-        out = sofar = hash_algo(m.asbytes()).digest() # TODO: PySEcube call
+
+        # [PySEcube] Generate digest from SHA256 implementation found on
+        #            SEcube device if the wrapper is initialised
+        if self.pysecube is None:
+            self.logger.log(DEBUG, "Using SHA256 from cryptography module")
+            tmp_digest = hash_algo(m.asbytes()).digest()
+        else:
+            self.logger.log(DEBUG, "Using SHA256 from PySEcube module")
+            tmp_digest = self.pysecube.sha256(m.asbytes())
+        out = sofar = tmp_digest
+        ###
+
         while len(out) < nbytes:
             m = Message()
             m.add_mpint(self.K)
             m.add_bytes(self.H)
             m.add_bytes(sofar)
-            digest = hash_algo(m.asbytes()).digest() # TODO: PySEcube call
+
+            # [PySEcube] Generate digest from SHA256 implementation found on
+            #            SEcube device if the wrapper is initialised
+            if self.pysecube is None:
+                self.logger.log(DEBUG, "Using SHA256 from cryptography module")
+                digest = hash_algo(m.asbytes()).digest()
+            else:
+                self.logger.log(DEBUG, "Using SHA256 from PySEcube module")
+                digest = self.pysecube.sha256(m.asbytes())
+            ###
+
             out += digest
             sofar += digest
         return out[:nbytes]
@@ -1964,8 +1987,8 @@ class Transport(threading.Thread, ClosingContextManager):
             self._cipher_info[name]["mode"] == modes.CTR else FEEDBACK_CBC
         flags |= MODE_ENCRYPT if operation is self._ENCRYPT \
             else MODE_DECRYPT
-        key_id = PYSECUBE_OUT_KEY_ID if operation is self._ENCRYPT else \
-            PYSECUBE_IN_KEY_ID
+        key_id = PYSECUBE_CIPHER_OUT_KEY_ID if operation is self._ENCRYPT else \
+            PYSECUBE_CIPHER_IN_KEY_ID
         
         return self.pysecube.get_crypter(algorithm, flags, key_id, iv=iv)
 
@@ -2548,10 +2571,10 @@ class Transport(threading.Thread, ClosingContextManager):
         # [PySEcube] Add key to SEcube - valid for 1 hour as per spec in RFC
         if self.pysecube is not None:
             # Add key to SEcube device
-            if self.pysecube.key_exists(PYSECUBE_IN_KEY_ID):
-                self.pysecube.delete_key(PYSECUBE_IN_KEY_ID)
-            self.pysecube.add_key(PYSECUBE_IN_KEY_ID, b"PARAMIKO_OUT",
-                                        key_in, 3600)
+            if self.pysecube.key_exists(PYSECUBE_CIPHER_IN_KEY_ID):
+                self.pysecube.delete_key(PYSECUBE_CIPHER_IN_KEY_ID)
+            self.pysecube.add_key(PYSECUBE_CIPHER_IN_KEY_ID,
+                                  b"PARAMIKO_CIPHER_IN", key_in, 3600)
             # Create crypter object
             engine = self._get_secube_cipher(
                 self.remote_cipher, IV_in, self._DECRYPT
@@ -2560,6 +2583,7 @@ class Transport(threading.Thread, ClosingContextManager):
             engine = self._get_cipher(
                 self.remote_cipher, key_in, IV_in, self._DECRYPT
             )
+
         # [PySEcube] Add DEBUG log to know which cipher engine is being used.
         self._log(DEBUG, "Inbound cipher engine %s", engine)
 
@@ -2572,6 +2596,19 @@ class Transport(threading.Thread, ClosingContextManager):
             mac_key = self._compute_key("E", mac_engine().digest_size)
         else:
             mac_key = self._compute_key("F", mac_engine().digest_size)
+
+        # [PySEcube] Add HMAC key to SEcube
+        if self.pysecube is not None:
+            # Add HMAC key to SEcube device
+            if self.pysecube.key_exists(PYSECUBE_HMAC_IN_KEY_ID):
+                self.pysecube.delete_key(PYSECUBE_HMAC_IN_KEY_ID)
+
+            # TODO: Should this be more than 1hr? Need to check RFC
+            self.pysecube.add_key(PYSECUBE_HMAC_IN_KEY_ID, b"PARAMIKO_HMAC_IN",
+                                  mac_key, 3600)
+            self.packetizer.set_pysecube_hmac_engine_in(
+                self.pysecube.compute_hmac)
+
         self.packetizer.set_inbound_cipher(
             engine, block_size, mac_engine, mac_size, mac_key, etm=etm
         )
@@ -2603,10 +2640,10 @@ class Transport(threading.Thread, ClosingContextManager):
         # [PySEcube] Add key to SEcube - valid for 1 hour as per RFC
         if self.pysecube is not None:
             # Add key to SEcube device
-            if self.pysecube.key_exists(PYSECUBE_OUT_KEY_ID):
-                self.pysecube.delete_key(PYSECUBE_OUT_KEY_ID)
-            self.pysecube.add_key(PYSECUBE_OUT_KEY_ID, b"PARAMIKO_OUT",
-                                        key_out, 3600)
+            if self.pysecube.key_exists(PYSECUBE_CIPHER_OUT_KEY_ID):
+                self.pysecube.delete_key(PYSECUBE_CIPHER_OUT_KEY_ID)
+            self.pysecube.add_key(PYSECUBE_CIPHER_OUT_KEY_ID,
+                                  b"PARAMIKO_CIPHER_OUT", key_out, 3600)
             # Create crypter object
             engine = self._get_secube_cipher(
                 self.local_cipher, IV_out, self._ENCRYPT
@@ -2628,6 +2665,19 @@ class Transport(threading.Thread, ClosingContextManager):
             mac_key = self._compute_key("F", mac_engine().digest_size)
         else:
             mac_key = self._compute_key("E", mac_engine().digest_size)
+
+        # [PySEcube] Add HMAC key to SEcube
+        if self.pysecube is not None:
+            # Add HMAC key to SEcube device
+            if self.pysecube.key_exists(PYSECUBE_HMAC_OUT_KEY_ID):
+                self.pysecube.delete_key(PYSECUBE_HMAC_OUT_KEY_ID)
+
+            # TODO: Should this be more than 1hr? Need to check RFC
+            self.pysecube.add_key(PYSECUBE_HMAC_OUT_KEY_ID,
+                                  b"PARAMIKO_HMAC_OUT", mac_key, 3600)
+            self.packetizer.set_pysecube_hmac_engine_out(
+                self.pysecube.compute_hmac)
+
         sdctr = self.local_cipher.endswith("-ctr")
         self.packetizer.set_outbound_cipher(
             engine, block_size, mac_engine, mac_size, mac_key,
