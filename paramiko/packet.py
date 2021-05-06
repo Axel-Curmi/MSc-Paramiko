@@ -441,10 +441,12 @@ class Packetizer(object):
 
                 # [PySEcube] HMAC with SEcube if specified
                 if self.__hmac_with_pysecube_out:
+                    self._log(DEBUG, "Using HMAC_OUT from PySEcube module")
                     out += self.__pysecube_hmac_engine_out(
                         PYSECUBE_HMAC_OUT_KEY_ID, payload
                     )
                 else:
+                    self._log(DEBUG, "Using HMAC_OUT from cryptography module")
                     out += compute_hmac(
                         self.__mac_key_out, payload, self.__mac_engine_out
                     )[: self.__mac_size_out]
