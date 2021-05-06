@@ -493,9 +493,11 @@ class Packetizer(object):
 
             # [PySEcube] HMAC with SEcube if specified
             if self.__hmac_with_pysecube_in:
+                self._log(DEBUG, "Using HMAC_IN from PySEcube module")
                 my_mac = self.__pysecube_hmac_engine_in(
                     PYSECUBE_HMAC_IN_KEY_ID, mac_payload)
             else:
+                self._log(DEBUG, "Using HMAC_IN from cryptography module")
                 my_mac = compute_hmac(
                     self.__mac_key_in, mac_payload, self.__mac_engine_in
                 )[: self.__mac_size_in]
@@ -541,9 +543,18 @@ class Packetizer(object):
                 struct.pack(">II", self.__sequence_number_in, packet_size)
                 + packet
             )
-            my_mac = compute_hmac(
-                self.__mac_key_in, mac_payload, self.__mac_engine_in
-            )[: self.__mac_size_in]
+
+            # [PySEcube] HMAC with SEcube if specified
+            if self.__hmac_with_pysecube_in:
+                self._log(DEBUG, "Using HMAC_IN from PySEcube module")
+                my_mac = self.__pysecube_hmac_engine_in(
+                    PYSECUBE_HMAC_IN_KEY_ID, mac_payload)
+            else:
+                self._log(DEBUG, "Using HMAC_IN from cryptography module")
+                my_mac = compute_hmac(
+                    self.__mac_key_in, mac_payload, self.__mac_engine_in
+                )[: self.__mac_size_in]
+
             if not util.constant_time_bytes_eq(my_mac, mac):
                 raise SSHException("Mismatched MAC")
         padding = byte_ord(packet[0])

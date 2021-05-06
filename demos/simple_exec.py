@@ -53,8 +53,8 @@ def main() -> int:
 
             _, stdout, _ = client.exec_command(args.command)
             print(stdout.read().decode())
-    finally:
-        pass
+    except Exception:
+        return 1
     return 0
 
 if __name__ == "__main__":
