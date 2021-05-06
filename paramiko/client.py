@@ -78,11 +78,6 @@ class SSHClient(ClosingContextManager):
         self._policy = RejectPolicy()
         self._transport = None
         self._agent = None
-        self._pysecube = None
-
-    def pysecube_login(self, pin: bytes):
-        self._pysecube = Wrapper(pin)
-        self._pysecube.crypto_set_time_now()
 
     def load_system_host_keys(self, filename=None):
         """
@@ -242,7 +237,8 @@ class SSHClient(ClosingContextManager):
         auth_timeout=None,
         gss_trust_dns=True,
         passphrase=None,
-        disabled_algorithms=None
+        disabled_algorithms=None,
+        pysecube=None
     ):
         """
         Connect to an SSH server and authenticate to it.  The server's host key
@@ -378,7 +374,7 @@ class SSHClient(ClosingContextManager):
             gss_kex=gss_kex,
             gss_deleg_creds=gss_deleg_creds,
             disabled_algorithms=disabled_algorithms,
-            pysecube=self._pysecube
+            pysecube=pysecube
         )
         t.use_compression(compress=compress)
         t.set_gss_host(

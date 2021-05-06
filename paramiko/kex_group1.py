@@ -25,7 +25,7 @@ import os
 from hashlib import sha1
 
 from paramiko import util
-from paramiko.common import max_byte, zero_byte
+from paramiko.common import DEBUG, max_byte, zero_byte
 from paramiko.message import Message
 from paramiko.py3compat import byte_chr, long, byte_mask
 from paramiko.ssh_exception import SSHException
@@ -52,6 +52,10 @@ class KexGroup1(object):
         self.x = long(0)
         self.e = long(0)
         self.f = long(0)
+
+        # [PySEcube] Add logger
+        self.log_name = f"paramiko.{self.name}"
+        self.logger = util.get_logger(self.log_name)
 
     def start_kex(self):
         self._generate_x()
@@ -121,9 +125,11 @@ class KexGroup1(object):
         #            SEcube device if the wrapper is initialised
         digest = None
         if self.transport.pysecube is None:
+            self.logger.log(DEBUG, "Using SHA256 from cryptography module")
             digest = self.hash_algo(hm.asbytes()).digest()
         else:
-            digest = self.transport.pysecube.digest_sha256(hm.asbytes())
+            self.logger.log(DEBUG, "Using SHA256 from PySEcube module")
+            digest = self.transport.pysecube.sha256(hm.asbytes())
         self.transport._set_K_H(K, digest)
         ###
 
@@ -150,7 +156,8 @@ class KexGroup1(object):
         hm.add_mpint(self.e)
         hm.add_mpint(self.f)
         hm.add_mpint(K)
-        H = sha1(hm.asbytes()).digest()
+        H = sha1(hm.asbytes()).digest() # [PySEcube] Paramiko will only be run
+                                        # as a client; Hence, no change needed.
         self.transport._set_K_H(K, H)
         # sign it
         sig = self.transport.get_server_key().sign_ssh_data(H)

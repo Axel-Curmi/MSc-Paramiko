@@ -37,6 +37,8 @@ from paramiko.common import (
     DEBUG,
     xffffffff,
     zero_byte,
+    PYSECUBE_HMAC_OUT_KEY_ID,
+    PYSECUBE_HMAC_IN_KEY_ID
 )
 from paramiko.py3compat import u, byte_ord
 from paramiko.ssh_exception import SSHException, ProxyCommandFailure
@@ -425,6 +427,7 @@ class Packetizer(object):
                 out += compute_hmac(
                     self.__mac_key_out, payload, self.__mac_engine_out
                 )[: self.__mac_size_out]
+
             self.__sequence_number_out = (
                 self.__sequence_number_out + 1
             ) & xffffffff
@@ -466,9 +469,11 @@ class Packetizer(object):
                 struct.pack(">II", self.__sequence_number_in, packet_size)
                 + packet
             )
+
             my_mac = compute_hmac(
                 self.__mac_key_in, mac_payload, self.__mac_engine_in
             )[: self.__mac_size_in]
+
             if not util.constant_time_bytes_eq(my_mac, mac):
                 raise SSHException("Mismatched MAC")
             header = packet
@@ -510,9 +515,11 @@ class Packetizer(object):
                 struct.pack(">II", self.__sequence_number_in, packet_size)
                 + packet
             )
+
             my_mac = compute_hmac(
                 self.__mac_key_in, mac_payload, self.__mac_engine_in
             )[: self.__mac_size_in]
+
             if not util.constant_time_bytes_eq(my_mac, mac):
                 raise SSHException("Mismatched MAC")
         padding = byte_ord(packet[0])

@@ -3,6 +3,8 @@ from paramiko.config import SSH_PORT
 
 import logging
 
+from pysecube.wrapper import Wrapper
+
 logging.basicConfig()
 logging.getLogger("paramiko").setLevel(logging.DEBUG)
 
@@ -22,17 +24,37 @@ def main() -> int:
     parser.add_argument("--command", "-c", type=str, required=True)
     args = parser.parse_args()
 
-    with SSHClient() as client:
-        client.load_system_host_keys()
-        client.pysecube_login(PYSECUBE_PIN)
+    pysecube = Wrapper(b"test")
+    pysecube.crypto_set_time_now()
 
-        client.connect(args.host, SSH_PORT, args.username, args.password)
-        # client.connect(args.host, SSH_PORT, args.username, args.password)
-        print(f"Connected with {args.host}")
+    try:
+        with SSHClient() as client:
+            client.load_system_host_keys()
 
-        _, stdout, _ = client.exec_command(args.command)
-        print(stdout.read().decode())
+            client.connect(args.host, SSH_PORT, args.username, args.password,
+                        disabled_algorithms={
+                            # Force KEX engine to use DH Group 14 with SHA256
+                            "kex": [
+                                    "curve25519-sha256@libssh.org",
+                                    "ecdh-sha2-nistp256",
+                                    "ecdh-sha2-nistp384",
+                                    "ecdh-sha2-nistp521",
+                                    "diffie-hellman-group16-sha512",
+                                    "diffie-hellman-group-exchange-sha256",
+                                    "diffie-hellman-group-exchange-sha1",
+                                    "diffie-hellman-group14-sha1",
+                                    "diffie-hellman-group1-sha1",
+                            ]
+                        },
+                        pysecube=pysecube
+            )
+            # client.connect(args.host, SSH_PORT, args.username, args.password)
+            print(f"Connected with {args.host}")
 
+            _, stdout, _ = client.exec_command(args.command)
+            print(stdout.read().decode())
+    except Exception:
+        return 1
     return 0
 
 if __name__ == "__main__":
