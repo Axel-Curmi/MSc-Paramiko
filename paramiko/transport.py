@@ -168,6 +168,7 @@ class Transport(threading.Thread, ClosingContextManager):
         "aes256-cbc",
         "blowfish-cbc",
         "3des-cbc",
+        "none",
     )
     _preferred_macs = (
         "hmac-sha2-256",
