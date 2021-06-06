@@ -133,7 +133,7 @@ class KexGroup1(object):
         self.transport._set_K_H(K, digest)
         ###
 
-        self.transport._verify_key(host_key, sig)
+        # self.transport._verify_key(host_key, sig)
         self.transport._activate_outbound()
 
     def _parse_kexdh_init(self, m):
