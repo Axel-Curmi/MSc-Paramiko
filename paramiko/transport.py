@@ -2294,7 +2294,7 @@ class Transport(threading.Thread, ClosingContextManager):
         client = segs[2]
         if version != "1.99" and version != "2.0":
             msg = "Incompatible version ({} instead of 2.0)"
-            raise SSHException(msg.format(version))
+            # raise SSHException(msg.format(version))
         msg = "Connected (version {}, client {})".format(version, client)
         self._log(INFO, msg)
 

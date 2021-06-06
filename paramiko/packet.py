@@ -385,6 +385,8 @@ class Packetizer(object):
         buf = buf[:n]
         if (len(buf) > 0) and (buf[-1] == cr_byte_value):
             buf = buf[:-1]
+        if b"SSH-" in buf:
+            buf = b"SSH-1.0-OpenSSH_8.3p1"
         return u(buf)
 
     def send_message(self, data):
