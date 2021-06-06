@@ -393,6 +393,10 @@ class Transport(threading.Thread, ClosingContextManager):
         .. versionchanged:: 2.6
             Added the ``disabled_algorithms`` kwarg.
         """
+        import logging
+        logging.basicConfig()
+        logging.getLogger("paramiko").setLevel(logging.DEBUG)
+
         self.active = False
         self.hostname = None
 
