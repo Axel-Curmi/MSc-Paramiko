@@ -2597,9 +2597,9 @@ class Transport(threading.Thread, ClosingContextManager):
         else:
             mac_key = self._compute_key("F", mac_engine().digest_size)
 
-        self.packetizer.set_inbound_cipher(
-            engine, block_size, mac_engine, mac_size, mac_key, etm=etm
-        )
+        # self.packetizer.set_inbound_cipher(
+        #     engine, block_size, mac_engine, mac_size, mac_key, etm=etm
+        # )
         compress_in = self._compression_info[self.remote_compression][1]
         if compress_in is not None and (
             self.remote_compression != "zlib@openssh.com" or self.authenticated
