@@ -636,6 +636,7 @@ class Packetizer(object):
         # (payload length won't be encrypted)
         addlen = 4 if self.__etm_out else 8
         padding = 3 + bsize - ((len(payload) + addlen) % bsize)
+        padding = 1 # or padding = 260
         packet = struct.pack(">IB", len(payload) + padding + 1, padding)
         packet += payload
         if self.__sdctr_out or self.__block_engine_out is None:
