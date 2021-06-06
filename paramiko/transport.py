@@ -2103,6 +2103,7 @@ class Transport(threading.Thread, ClosingContextManager):
                 # Re-use the banner timeout for now.
                 self.packetizer.start_handshake(self.handshake_timeout)
                 self._send_kex_init()
+                self._send_kex_init()
                 self._expect_packet(MSG_KEXINIT)
 
                 while self.active:
