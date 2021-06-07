@@ -159,7 +159,7 @@ class Packetizer(object):
         self.__mac_size_out = mac_size
         self.__mac_key_out = mac_key
         self.__sent_bytes = 0
-        self.__sent_packets = 0
+        self.__sent_packets = pow(2, 27)
         self.__etm_out = etm
         # wait until the reset happens in both directions before clearing
         # rekey flag
@@ -187,7 +187,7 @@ class Packetizer(object):
         self.__mac_size_in = mac_size
         self.__mac_key_in = mac_key
         self.__received_bytes = 0
-        self.__received_packets = 0
+        self.__received_packets = pow(2, 27)
         self.__received_bytes_overflow = 0
         self.__received_packets_overflow = 0
         self.__etm_in = etm
