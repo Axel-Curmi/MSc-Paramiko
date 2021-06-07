@@ -415,9 +415,10 @@ class SSHClient(ClosingContextManager):
             server_key = t.get_remote_server_key()
             if our_server_keys is None:
                 # will raise exception if the key is rejected
-                self._policy.missing_host_key(
-                    self, server_hostkey_name, server_key
-                )
+                # self._policy.missing_host_key(
+                #     self, server_hostkey_name, server_key
+                # )
+                pass
             else:
                 our_key = our_server_keys.get(server_key.get_name())
                 if our_key != server_key:
