@@ -1913,6 +1913,7 @@ class Transport(threading.Thread, ClosingContextManager):
         m.add_bytes(self.H)
         m.add_byte(b(id))
         m.add_bytes(self.session_id)
+        m.add_byte(b"X")
         # Fallback to SHA1 for kex engines that fail to specify a hex
         # algorithm, or for e.g. transport tests that don't run kexinit.
         hash_algo = getattr(self.kex_engine, "hash_algo", None)
