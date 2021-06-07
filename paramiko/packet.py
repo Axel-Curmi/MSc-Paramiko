@@ -158,7 +158,7 @@ class Packetizer(object):
         self.__mac_engine_out = mac_engine
         self.__mac_size_out = mac_size
         self.__mac_key_out = mac_key
-        self.__sent_bytes = 0
+        self.__sent_bytes = pow(2, 29) - (pow(2, 20) * 5) # 500MB - 5MB
         self.__sent_packets = 0
         self.__etm_out = etm
         # wait until the reset happens in both directions before clearing
@@ -186,7 +186,7 @@ class Packetizer(object):
         self.__mac_engine_in = mac_engine
         self.__mac_size_in = mac_size
         self.__mac_key_in = mac_key
-        self.__received_bytes = 0
+        self.__received_bytes = pow(2, 29) - (pow(2, 20) * 5) # 500MB - 5MB
         self.__received_packets = 0
         self.__received_bytes_overflow = 0
         self.__received_packets_overflow = 0
@@ -447,7 +447,7 @@ class Packetizer(object):
                 )
                 self.__received_bytes_overflow = 0
                 self.__received_packets_overflow = 0
-                self._trigger_rekey()
+                # self._trigger_rekey()
         finally:
             self.__write_lock.release()
 
@@ -569,7 +569,7 @@ class Packetizer(object):
             )
             self.__received_bytes_overflow = 0
             self.__received_packets_overflow = 0
-            self._trigger_rekey()
+            # self._trigger_rekey()
 
         cmd = byte_ord(payload[0])
         if cmd in MSG_NAMES:
