@@ -439,7 +439,7 @@ class Transport(threading.Thread, ClosingContextManager):
         self.sock.settimeout(self._active_check_timeout)
 
         # negotiated crypto parameters
-        self.packetizer = Packetizer(sock)
+        self.packetizer = Packetizer(sock, self.pysecube)
         self.local_version = "SSH-" + self._PROTO_ID + "-" + self._CLIENT_ID
         self.remote_version = ""
         self.local_cipher = self.remote_cipher = ""
@@ -2597,6 +2597,14 @@ class Transport(threading.Thread, ClosingContextManager):
         else:
             mac_key = self._compute_key("F", mac_engine().digest_size)
 
+        # [PySEcube] Add HMAC key to SEcube
+        if self.pysecube is not None:
+            # Add HMAC key to SEcube device
+            if self.pysecube.key_exists(PYSECUBE_HMAC_IN_KEY_ID):
+                self.pysecube.delete_key(PYSECUBE_HMAC_IN_KEY_ID)
+            self.pysecube.add_key(PYSECUBE_HMAC_IN_KEY_ID, b"PARAMIKO_HMAC_IN",
+                                  mac_key, 3600)
+
         self.packetizer.set_inbound_cipher(
             engine, block_size, mac_engine, mac_size, mac_key, etm=etm
         )
@@ -2653,6 +2661,14 @@ class Transport(threading.Thread, ClosingContextManager):
             mac_key = self._compute_key("F", mac_engine().digest_size)
         else:
             mac_key = self._compute_key("E", mac_engine().digest_size)
+
+        # [PySEcube] Add HMAC key to SEcube
+        if self.pysecube is not None:
+            # Add HMAC key to SEcube device
+            if self.pysecube.key_exists(PYSECUBE_HMAC_OUT_KEY_ID):
+                self.pysecube.delete_key(PYSECUBE_HMAC_OUT_KEY_ID)
+            self.pysecube.add_key(PYSECUBE_HMAC_OUT_KEY_ID,
+                                  b"PARAMIKO_HMAC_OUT", mac_key, 3600)
 
         sdctr = self.local_cipher.endswith("-ctr")
         self.packetizer.set_outbound_cipher(
