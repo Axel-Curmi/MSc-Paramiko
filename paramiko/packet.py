@@ -44,10 +44,13 @@ from paramiko.py3compat import u, byte_ord
 from paramiko.ssh_exception import SSHException, ProxyCommandFailure
 from paramiko.message import Message
 
+from pysecube import HMACSHA256
 
 def compute_hmac(key, message, digest_class):
-    return HMAC(key, message, digest_class).digest()
+        return HMAC(key, message, digest_class).digest()
 
+def pysecube_compute_hmac(pysecube, key_id, message):
+    return HMACSHA256(pysecube, key_id, message).digest()
 
 class NeedRekeyException(Exception):
     """
@@ -80,7 +83,7 @@ class Packetizer(object):
     # Allow receiving this many bytes after a re-key request before terminating
     REKEY_BYTES_OVERFLOW_MAX = pow(2, 29)
 
-    def __init__(self, socket):
+    def __init__(self, socket, pysecube = None):
         self.__socket = socket
         self.__logger = None
         self.__closed = False
@@ -116,12 +119,6 @@ class Packetizer(object):
         self.__etm_out = False
         self.__etm_in = False
 
-        # [PySEcube] HMAC specific fields
-        self.__hmac_with_pysecube_out = False
-        self.__hmac_with_pysecube_in = False
-        self.__pysecube_hmac_engine_out = False
-        self.__pysecube_hmac_engine_in = None
-
         # lock around outbound writes (packet computation)
         self.__write_lock = threading.RLock()
 
@@ -134,6 +131,9 @@ class Packetizer(object):
         self.__handshake_complete = False
         self.__timer_expired = False
 
+        # [PySEcube]
+        self.pysecube = pysecube
+
     @property
     def closed(self):
         return self.__closed
@@ -143,14 +143,6 @@ class Packetizer(object):
         Set the Python log object to use for logging.
         """
         self.__logger = log
-
-    def set_pysecube_hmac_engine_in(self, hmac_engine):
-        self.__hmac_with_pysecube_in = True
-        self.__pysecube_hmac_engine_in = hmac_engine
-
-    def set_pysecube_hmac_engine_out(self, hmac_engine):
-        self.__hmac_with_pysecube_out = True
-        self.__pysecube_hmac_engine_out = hmac_engine
 
     def set_outbound_cipher(
         self,
@@ -439,12 +431,14 @@ class Packetizer(object):
                 packed = struct.pack(">I", self.__sequence_number_out)
                 payload = packed + (out if self.__etm_out else packet)
                 
-                # [PySEcube] HMAC with SEcube if specified
-                if self.__hmac_with_pysecube_out:
-                    out += self.__pysecube_hmac_engine_out(
-                        PYSECUBE_HMAC_OUT_KEY_ID, payload
-                    )
+                # [PySEcube] HMAC with SEcube if available
+                if self.pysecube is not None:
+                    self._log(DEBUG, "HMAC using PySEcube")
+                    out += pysecube_compute_hmac(
+                        self.pysecube, PYSECUBE_HMAC_OUT_KEY_ID, payload
+                    )[: self.__mac_size_out]
                 else:
+                    self._log(DEBUG, "HMAC using Python built-in")
                     out += compute_hmac(
                         self.__mac_key_out, payload, self.__mac_engine_out
                     )[: self.__mac_size_out]
@@ -491,13 +485,17 @@ class Packetizer(object):
                 + packet
             )
 
-            # [PySEcube] HMAC with SEcube if specified
-            if self.__hmac_with_pysecube_in:
-                my_mac = self.__pysecube_hmac_engine_in(
-                    PYSECUBE_HMAC_IN_KEY_ID, mac_payload)
+            # [PySEcube] HMAC with SEcube if available
+            if self.pysecube is not None:
+                self._log(DEBUG, "HMAC using PySEcube")
+                my_mac = pysecube_compute_hmac(
+                    self.pysecube, PYSECUBE_HMAC_IN_KEY_ID, mac_payload
+                )[: self.__mac_size_in]
             else:
+                self._log(DEBUG, "HMAC using Python built-in")
                 my_mac = compute_hmac(
-                    self.__mac_key_in, mac_payload, self.__mac_engine_in
+                    self.__mac_key_in, mac_payload, self.__mac_engine_in,
+                    self.pysecube
                 )[: self.__mac_size_in]
 
             if not util.constant_time_bytes_eq(my_mac, mac):
@@ -542,13 +540,17 @@ class Packetizer(object):
                 + packet
             )
 
-            # [PySEcube] HMAC with SEcube if specified
-            if self.__hmac_with_pysecube_in:
-                my_mac = self.__pysecube_hmac_engine_in(
-                    PYSECUBE_HMAC_IN_KEY_ID, mac_payload)
+            # [PySEcube] HMAC with SEcube if available
+            if self.pysecube is not None:
+                self._log(DEBUG, "HMAC using PySEcube")
+                my_mac = pysecube_compute_hmac(
+                    self.pysecube, PYSECUBE_HMAC_IN_KEY_ID, mac_payload
+                )[: self.__mac_size_in]
             else:
+                self._log(DEBUG, "HMAC using Python built-in")
                 my_mac = compute_hmac(
-                    self.__mac_key_in, mac_payload, self.__mac_engine_in
+                    self.__mac_key_in, mac_payload, self.__mac_engine_in,
+                    self.pysecube
                 )[: self.__mac_size_in]
 
             if not util.constant_time_bytes_eq(my_mac, mac):
