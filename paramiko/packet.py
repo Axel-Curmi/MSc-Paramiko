@@ -494,8 +494,7 @@ class Packetizer(object):
             else:
                 self._log(DEBUG, "HMAC using Python built-in")
                 my_mac = compute_hmac(
-                    self.__mac_key_in, mac_payload, self.__mac_engine_in,
-                    self.pysecube
+                    self.__mac_key_in, mac_payload, self.__mac_engine_in
                 )[: self.__mac_size_in]
 
             if not util.constant_time_bytes_eq(my_mac, mac):
@@ -549,8 +548,7 @@ class Packetizer(object):
             else:
                 self._log(DEBUG, "HMAC using Python built-in")
                 my_mac = compute_hmac(
-                    self.__mac_key_in, mac_payload, self.__mac_engine_in,
-                    self.pysecube
+                    self.__mac_key_in, mac_payload, self.__mac_engine_in
                 )[: self.__mac_size_in]
 
             if not util.constant_time_bytes_eq(my_mac, mac):
