@@ -82,9 +82,6 @@ class SSHClient(ClosingContextManager):
         self.pysecube = Wrapper(b"test")
         self.pysecube.crypto_set_time_now()
 
-    def __del__(self):
-        self.pysecube.destroy()
-
     def load_system_host_keys(self, filename=None):
         """
         Load host keys from a system (read-only) file.  Host keys read with
@@ -472,6 +469,9 @@ class SSHClient(ClosingContextManager):
         if self._agent is not None:
             self._agent.close()
             self._agent = None
+        
+        self.pysecube.destroy()
+        self.pysecube = None
 
     def exec_command(
         self,
