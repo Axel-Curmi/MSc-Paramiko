@@ -79,6 +79,12 @@ class SSHClient(ClosingContextManager):
         self._transport = None
         self._agent = None
 
+        self.pysecube = Wrapper(b"test")
+        self.pysecube.crypto_set_time_now()
+
+    def __del__(self):
+        self.pysecube.destroy()
+
     def load_system_host_keys(self, filename=None):
         """
         Load host keys from a system (read-only) file.  Host keys read with
@@ -237,8 +243,7 @@ class SSHClient(ClosingContextManager):
         auth_timeout=None,
         gss_trust_dns=True,
         passphrase=None,
-        disabled_algorithms=None,
-        pysecube=None
+        disabled_algorithms=None
     ):
         """
         Connect to an SSH server and authenticate to it.  The server's host key
@@ -374,7 +379,7 @@ class SSHClient(ClosingContextManager):
             gss_kex=gss_kex,
             gss_deleg_creds=gss_deleg_creds,
             disabled_algorithms=disabled_algorithms,
-            pysecube=pysecube
+            pysecube=self.pysecube
         )
         t.use_compression(compress=compress)
         t.set_gss_host(
