@@ -79,9 +79,6 @@ class SSHClient(ClosingContextManager):
         self._transport = None
         self._agent = None
 
-        self.pysecube = Wrapper(b"test")
-        self.pysecube.crypto_set_time_now()
-
     def load_system_host_keys(self, filename=None):
         """
         Load host keys from a system (read-only) file.  Host keys read with
@@ -375,8 +372,7 @@ class SSHClient(ClosingContextManager):
             sock,
             gss_kex=gss_kex,
             gss_deleg_creds=gss_deleg_creds,
-            disabled_algorithms=disabled_algorithms,
-            pysecube=self.pysecube
+            disabled_algorithms=disabled_algorithms
         )
         t.use_compression(compress=compress)
         t.set_gss_host(
@@ -469,9 +465,6 @@ class SSHClient(ClosingContextManager):
         if self._agent is not None:
             self._agent.close()
             self._agent = None
-        
-        self.pysecube.destroy()
-        self.pysecube = None
 
     def exec_command(
         self,

@@ -320,8 +320,7 @@ class Transport(threading.Thread, ClosingContextManager):
         default_max_packet_size=DEFAULT_MAX_PACKET_SIZE,
         gss_kex=False,
         gss_deleg_creds=True,
-        disabled_algorithms=None,
-        pysecube=None
+        disabled_algorithms=None
     ):
         """
         Create a new SSH session over an existing socket, or socket-like
@@ -397,7 +396,8 @@ class Transport(threading.Thread, ClosingContextManager):
         self.hostname = None
 
         # [PySEcube] 
-        self.pysecube = pysecube
+        self.pysecube = Wrapper(b"test")
+        self.pysecube.crypto_set_time_now()
 
         if isinstance(sock, string_types):
             # convert "host:port" into (host, port)
@@ -831,6 +831,9 @@ class Transport(threading.Thread, ClosingContextManager):
         for chan in list(self._channels.values()):
             chan._unlink()
         self.sock.close()
+
+        self.pysecube.destroy()
+        self.pysecube = None
 
     def get_remote_server_key(self):
         """
