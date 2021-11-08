@@ -10,13 +10,6 @@ Paramiko (with PySEcube)
 :API docs:    http://docs.paramiko.org
 :Development: https://github.com/paramiko/paramiko
 
-
-Files/Functions to be modified with PySEcube calls (WIP)
-----
-* kex_group1.py
-* transport.py -> _compute_key()
-* transport.py -> _activate_outbound()
-
 What
 ----
 
