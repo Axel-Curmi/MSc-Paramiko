@@ -13,6 +13,8 @@ Paramiko (with PySEcube)
 What
 ----
 
+⚠️ **This repository is a mirror of https://github.com/paramiko/paramiko. This repository is used to as a proof-of-concept for modifying the Paramiko SSH implementation with calls to the SEcube open-source HSM.⚠️**
+
 "Paramiko" is a combination of the Esperanto words for "paranoid" and
 "friend".  It's a module for Python 2.7/3.4+ that implements the SSH2 protocol
 for secure (encrypted and authenticated) connections to remote machines. Unlike
